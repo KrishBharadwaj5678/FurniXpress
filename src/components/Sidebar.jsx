@@ -2,12 +2,10 @@ import React from "react";
 import chairModelUrl from "../models/chair.glb";
 import sofaModelUrl from "../models/sofa.glb";
 import tableModelUrl from "../models/table.glb";
-import doorModelUrl from "../models/door.glb";
 
 import chairImg from "../assets/chair.png";
 import sofaImg from "../assets/sofa.png";
 import tableImg from "../assets/table.png";
-import doorImg from "../assets/door.png";
 
 function Sidebar({ onSelectFurniture }) {
 
@@ -15,8 +13,7 @@ function Sidebar({ onSelectFurniture }) {
   const furnitureModels = [
     { name: "Chair", url: chairModelUrl, img: chairImg },
     { name: "Table", url: tableModelUrl, img: tableImg },
-    { name: "Sofa", url: sofaModelUrl, img: sofaImg },
-    { name: "Door", url: doorModelUrl, img: doorImg },
+    { name: "Sofa", url: sofaModelUrl, img: sofaImg }
   ];
 
   const handleDragStart = (e, item) => {
