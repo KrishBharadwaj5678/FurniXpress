@@ -1,0 +1,179 @@
+import React, { useEffect, useRef, useState } from "react";
+import * as BABYLON from "@babylonjs/core";
+import "@babylonjs/loaders";
+
+import roomModelUrl from "./models/Room3.glb";
+import chairModelUrl from "./models/chair.glb";
+import sofaModelUrl from "./models/sofa.glb";
+import tableModelUrl from "./models/table.glb";
+import Walls from "./assets/walls.avif"
+
+function BabylonScene({ furnitureModelUrl }) {
+  const canvasRef = useRef(null);
+  const sceneRef = useRef(null);
+  const engineRef = useRef(null);
+  const furnitureMeshesRef = useRef([]);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const engine = new BABYLON.Engine(canvasRef.current, true);
+    engineRef.current = engine;
+
+    const scene = new BABYLON.Scene(engine);
+    sceneRef.current = scene;
+
+    const camera = new BABYLON.ArcRotateCamera(
+      "Camera",
+      -Math.PI / 2,
+      Math.PI / 2.5,
+      10,
+      BABYLON.Vector3.Zero(),
+      scene
+    );
+    camera.attachControl(canvasRef.current, true);
+
+    canvasRef.current.addEventListener(
+      "wheel",
+      (evt) => {
+        evt.preventDefault(); // Prevent page zoom/scroll
+      },
+      { passive: false }
+    );
+
+    new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), scene);
+
+    // Load room model and apply wall texture
+    BABYLON.SceneLoader.Append("", roomModelUrl, scene, () => {
+  console.log("Room loaded");
+
+  scene.meshes.forEach((m) => console.log("Mesh:", m.name));
+
+  // const wallMeshes = scene.meshes.filter(mesh =>
+    // mesh.name === "Cube"
+  // );
+
+
+  if (wallMeshes.length > 0) {
+    const wallMaterial = new BABYLON.StandardMaterial("wallMat", scene);
+    const wallTexture = new BABYLON.Texture(Walls, scene, false, false, BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+      () => console.log("Wall texture loaded"),
+      (message, exception) => console.error("Wall texture load error:", message, exception)
+    );
+    wallMaterial.diffuseTexture = wallTexture;
+
+    wallMeshes.forEach((wall) => {
+      wall.material = wallMaterial;
+      // Apply material recursively if needed
+      if (wall.getChildMeshes) {
+        wall.getChildMeshes().forEach(child => {
+          child.material = wallMaterial;
+        });
+      }
+    });
+
+    scene.markAllMaterialsAsDirty(BABYLON.Material.TextureDirtyFlag);
+
+    console.log("Applied wall texture to:", wallMeshes.map((w) => w.name));
+  } else {
+    console.warn(
+      "No wall mesh found with 'wall' in its name — check mesh names!"
+    );
+  }
+});
+
+
+// console.log("All loaded meshes:");
+// scene.meshes.forEach((mesh) => console.log(mesh.name));
+
+
+    engine.runRenderLoop(() => {
+      scene.render();
+    });
+
+    window.addEventListener("resize", () => engine.resize());
+
+    return () => {
+      window.removeEventListener("resize", () => engine.resize());
+      scene.dispose();
+      engine.dispose();
+    };
+  }, [roomModelUrl]);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    furnitureMeshesRef.current.forEach((mesh) => {
+      if (mesh && !mesh.isDisposed()) {
+        mesh.dispose();
+      }
+    });
+    furnitureMeshesRef.current = [];
+
+    if (!furnitureModelUrl) return;
+
+    BABYLON.SceneLoader.ImportMesh(
+      "",
+      "",
+      furnitureModelUrl,
+      scene,
+      (meshes) => {
+        meshes.forEach((mesh) => {
+          mesh.name = "furniture_" + mesh.name;
+          mesh.position = new BABYLON.Vector3(0, 0, 0);
+          mesh.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
+          furnitureMeshesRef.current.push(mesh);
+        });
+      },
+      null,
+      (scene, message, exception) => {
+        console.error("Furniture load error:", message, exception);
+      }
+    );
+  }, [furnitureModelUrl]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full"
+      style={{ touchAction: "none" }}
+    />
+  );
+}
+
+function Sidebar({ onSelectFurniture }) {
+  const furnitureModels = [
+    { name: "Chair", url: chairModelUrl },
+    { name: "Table", url: tableModelUrl },
+    { name: "Sofa", url: sofaModelUrl },
+  ];
+
+  return (
+    <div className="bg-gray-900 text-white w-64 p-4 space-y-4 flex flex-col">
+      <h2 className="text-2xl font-bold mb-6">Furniture</h2>
+      {furnitureModels.map((item) => (
+        <button
+          key={item.url}
+          onClick={() => onSelectFurniture(item.url)}
+          className="w-full bg-gray-800 hover:bg-gray-700 rounded-md p-3 text-left transition"
+        >
+          {item.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function App() {
+  const [selectedFurniture, setSelectedFurniture] = useState(null);
+
+  return (
+    <div className="flex h-screen">
+      <Sidebar onSelectFurniture={setSelectedFurniture} />
+      <div className="flex-grow bg-gray-100">
+        <BabylonScene furnitureModelUrl={selectedFurniture} />
+      </div>
+    </div>
+  );
+}
